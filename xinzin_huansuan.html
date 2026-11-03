@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时薪换算器 · 把价格换算成生命</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f2f3f7; color: #262a33; line-height: 1.6; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 60px; }
+  header { border-bottom: 3px double #4a5a8a; padding-bottom: 14px; margin-bottom: 22px; }
+  header h1 { font-size: 26px; letter-spacing: 1px; }
+  header .tagline { color: #555f7a; margin-top: 4px; }
+  .ver { display: inline-block; font-size: 12px; border: 1px solid #4a5a8a; border-radius: 3px; padding: 1px 8px; margin-top: 8px; color: #555f7a; }
+  .card { background: #fdfdff; border: 1px solid #ccd2e0; border-radius: 6px; padding: 18px 20px; margin-bottom: 18px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; }
+  .field label { font-size: 13px; color: #555f7a; margin-bottom: 4px; }
+  .field input { padding: 7px 9px; border: 1px solid #9aa5c4; border-radius: 4px; font-size: 15px; background: #fff; min-width: 110px; }
+  .field input.big-input { font-size: 18px; min-width: 200px; }
+  button { padding: 8px 16px; border: 1px solid #4a5a8a; background: #e6eaf5; color: #2e3a5c; border-radius: 4px; font-size: 14px; cursor: pointer; }
+  button:hover { background: #d5dcf0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .chip { border: 1px solid #9aa5c4; background: #fff; border-radius: 16px; padding: 6px 14px; font-size: 13px; }
+  .chip.active { background: #5a6ca8; color: #fff; border-color: #5a6ca8; }
+  .main-grid { display: grid; grid-template-columns: 1fr 220px; gap: 16px; align-items: start; }
+  .result { background: #f3f5fb; border: 1px dashed #9aa5c4; border-radius: 4px; padding: 14px 16px; font-size: 15px; margin-top: 8px; }
+  .result .big { font-size: 22px; font-weight: bold; color: #34447e; }
+  .price-box { margin-top: 14px; }
+  #goodChips { flex-wrap: nowrap; }
+  #goodChips .chip { padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+  .warn { color: #a0522d; font-size: 14px; }
+  .note { font-size: 13px; color: #555f7a; margin-top: 8px; }
+  .mood-tag { display: inline-block; font-size: 12px; border-radius: 10px; padding: 2px 10px; margin-top: 6px; }
+  .mood-fresh { background: #e3f4e3; color: #2e7d32; }
+  .mood-tired { background: #fff3d6; color: #a07818; }
+  .mood-weary { background: #fde8d2; color: #b05c2a; }
+  .mood-broken { background: #f3d9d9; color: #a03030; }
+  .char-stage { text-align: center; }
+  .bubble { position: relative; background: #fff; border: 1px solid #9aa5c4; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 14px; min-height: 42px; color: #454e66; }
+  .bubble::before { content: ""; position: absolute; top: -8px; left: 50%; margin-left: -8px; border: 8px solid transparent; border-bottom-color: #9aa5c4; border-top: 0; }
+  .char .face { fill: #ffe3d0; transition: fill .3s; }
+  .char .hair { fill: #3d3a45; transform-origin: 70px 40px; transition: transform .3s; }
+  .char .ahoge { fill: none; stroke: #3d3a45; stroke-width: 3; stroke-linecap: round; transform-origin: 70px 16px; transition: transform .3s; }
+  .char .eye { fill: #333; transition: transform .1s; transform-box: fill-box; transform-origin: center; }
+  .char .bag { fill: #7a5a6a; opacity: 0; transition: opacity .3s; }
+  .char .mouth { fill: none; stroke: #a0522d; stroke-width: 2.5; stroke-linecap: round; }
+  .char .screen { fill: #41465a; }
+  .char .lapbase { fill: #8a93ad; }
+  .char.tired .bag { opacity: .45; }
+  .char.weary .bag { opacity: .85; }
+  .char.weary .hair { transform: rotate(5deg); }
+  .char.broken .bag { opacity: 1; }
+  .char.broken .face { fill: #d8d2cc; }
+  .char.broken .hair { transform: rotate(10deg); }
+  .char.broken .ahoge { transform: rotate(150deg); }
+  @keyframes hop { 0% { transform: translateY(0); } 40% { transform: translateY(-10px) scale(1.04); } 100% { transform: translateY(0) scale(1); } }
+  .char.hop { animation: hop .3s ease; }
+  .char.blink .eye { transform: scaleY(.12); }
+  .caliber { font-size: 13px; color: #555f7a; margin-top: 16px; border: 1px solid #ccd2e0; border-radius: 4px; padding: 8px 12px; background: #f8f9fd; }
+  .caliber summary { cursor: pointer; }
+  #billCanvas { display: none; }
+  footer { margin-top: 30px; text-align: center; color: #555f7a; font-size: 13px; border-top: 1px solid #ccd2e0; padding-top: 14px; }
+  @media (max-width: 640px) { .main-grid { grid-template-columns: 1fr; } #goodChips { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>时薪换算器</h1>
+    <div class="tagline">输入月薪，看真实时薪——买东西前，先换算成几小时的班。</div>
+    <span class="ver">v0.2.1</span>
+  </header>
+
+  <div class="card">
+    <div class="main-grid">
+      <div>
+        <div class="row">
+          <div class="field">
+            <label>每月到手收入（元）</label>
+            <input type="text" id="monthly" class="big-input" placeholder="税后实发，唯一必填">
+          </div>
+        </div>
+        <div class="chips" id="chips">
+          <button class="chip" data-type="normal">朝九晚五双休</button>
+          <button class="chip" data-type="bigsmall">大小周</button>
+          <button class="chip" data-type="n996">996</button>
+          <button class="chip" data-type="custom">自定义</button>
+        </div>
+        <div class="row" id="customRow" style="display:none;">
+          <div class="field">
+            <label>每周工作天数</label>
+            <input type="text" id="daysWeek" value="5">
+          </div>
+          <div class="field">
+            <label>每天工作小时</label>
+            <input type="text" id="hoursDay" value="8">
+          </div>
+          <div class="field">
+            <label>每天通勤往返（小时）</label>
+            <input type="text" id="commute" value="1">
+          </div>
+        </div>
+        <div id="hourlyResult" class="result"></div>
+        <div class="price-box">
+          <div class="chips" id="goodChips"></div>
+          <div class="row">
+            <div class="field">
+              <label>商品价格（元，参考价可手改）</label>
+              <input type="text" id="price" placeholder="点上面常见商品，或直接输价">
+            </div>
+            <button id="recalcBtn">换算价格</button>
+          </div>
+          <div id="priceResult" class="result"></div>
+          <div class="row" style="margin-top:10px;">
+            <button id="billBtn">生成生命账单卡</button>
+          </div>
+        </div>
+      </div>
+      <div class="char-stage">
+        <svg id="chibi" class="char fresh" viewBox="0 0 140 150" width="160" height="171" aria-hidden="true">
+          <g class="whole">
+            <rect class="screen" x="88" y="118" width="40" height="26" rx="3"/>
+            <rect class="lapbase" x="84" y="142" width="48" height="6" rx="2"/>
+            <path d="M46 96 Q70 106 94 96 L100 130 Q70 140 40 130 Z" fill="#5a6ca8"/>
+            <path d="M56 98 L62 116 M84 98 L78 116" stroke="#4a5a8a" stroke-width="2" fill="none"/>
+            <rect x="58" y="114" width="24" height="16" rx="2" fill="#e6eaf5" stroke="#4a5a8a"/>
+            <rect x="62" y="118" width="16" height="3" fill="#9aa5c4"/>
+            <rect x="62" y="123" width="10" height="2" fill="#9aa5c4"/>
+            <g class="head">
+              <path class="ahoge" d="M70 16 Q63 4 52 8"/>
+              <circle class="face" cx="70" cy="56" r="30"/>
+              <path class="hair" d="M38 54 Q34 16 70 14 Q106 16 102 54 Q100 30 70 28 Q40 30 38 54 Z"/>
+              <ellipse class="bag bagL" cx="58" cy="64" rx="6.5" ry="2.6"/>
+              <ellipse class="bag bagR" cx="82" cy="64" rx="6.5" ry="2.6"/>
+              <ellipse class="eye eyeL" cx="58" cy="56" rx="4" ry="6"/>
+              <ellipse class="eye eyeR" cx="82" cy="56" rx="4" ry="6"/>
+              <path class="mouth" d="M64 72 Q70 77 76 72"/>
+            </g>
+          </g>
+        </svg>
+        <div class="bubble" id="bubble">随便输个价格，我帮你算命。</div>
+      </div>
+    </div>
+    <details class="caliber" open>
+      <summary>口径说明</summary>
+      <p>
+        月工作日 = 每周工作天数 × 4.33。<br>
+        名义时薪 = 月收入 ÷（月工作日 × 日工时）；真实时薪 = 月收入 ÷（月工作日 ×（日工时 + 通勤））——通勤是为钱卖命的一部分，也算进去。<br>
+        班味等级按每周总投入（工时 + 通勤）划分：不超过 42 小时为「精神」、43～60 小时为「疲惫」、61～72 小时为「憔悴」、超过 72 小时（比如 996 加长通勤）为「大爆击」。<br>
+        台词按本次换算结果分档：不超过 1 小时生命、1～8 小时、8～40 小时、超过 40 小时。<br>
+        商品参考价为市面常见价，点 chip 填入后可手改。
+      </p>
+    </details>
+  </div>
+
+  <canvas id="billCanvas" width="640" height="440"></canvas>
+
+  <footer>数据仅存本地</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var STORE_KEY = "xinzin_huansuan_v2";
+  var $ = function (id) { return document.getElementById(id); };
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; }
+  function fmt(n, d) { if (!isFinite(n)) return "--"; return n.toLocaleString("zh-CN", { maximumFractionDigits: d === undefined ? 2 : d }); }
+
+  var PRESETS = {
+    normal: { label: "朝九晚五双休", daysWeek: 5, hoursDay: 8, commute: 1 },
+    bigsmall: { label: "大小周", daysWeek: 5.5, hoursDay: 9, commute: 1 },
+    n996: { label: "996", daysWeek: 6, hoursDay: 12, commute: 1 },
+    custom: { label: "自定义" }
+  };
+  var MOODS = [
+    { key: "fresh", title: "精神饱满打工人", max: 42 },
+    { key: "tired", title: "疲惫打工人", max: 60 },
+    { key: "weary", title: "憔悴打工人", max: 72 },
+    { key: "broken", title: "大爆击打工人", max: Infinity }
+  ];
+
+  var GOODS = [
+    { name: "大水", price: 2 },
+    { name: "瑞幸", price: 9.9 },
+    { name: "王者传说皮肤", price: 168.8 },
+    { name: "薄肌健身卡", price: 1999 },
+    { name: "iPhone Pro Max", price: 9999 },
+    { name: "特斯拉", price: 235000 }
+  ];
+
+  var state = { workType: "normal", real: null, nominal: null, weekHours: null, mood: MOODS[0], priceHours: null, priceVal: null };
+  var pokeTimer = 0;
+
+  function moodOf(weekHours) {
+    if (weekHours <= 42) return MOODS[0];
+    if (weekHours <= 60) return MOODS[1];
+    if (weekHours <= 72) return MOODS[2];
+    return MOODS[3];
+  }
+
+  function readInputs() {
+    var t = state.workType;
+    var daysWeek, hoursDay, commute;
+    if (t === "custom") {
+      daysWeek = num($("daysWeek").value);
+      hoursDay = num($("hoursDay").value);
+      commute = num($("commute").value) || 0;
+    } else {
+      var p = PRESETS[t];
+      daysWeek = p.daysWeek; hoursDay = p.hoursDay; commute = p.commute;
+    }
+    return { monthly: num($("monthly").value), daysWeek: daysWeek, hoursDay: hoursDay, commute: commute };
+  }
+
+  function validate(v) {
+    if (!isFinite(v.monthly) || v.monthly <= 0) return "请输入大于 0 的月收入。";
+    if (v.monthly > 10000000) return "月收入大到不现实（上限 1000 万），请检查。";
+    if (!isFinite(v.daysWeek) || v.daysWeek <= 0 || v.daysWeek > 7) return "每周工作天数须在 0～7 之间。";
+    if (!isFinite(v.hoursDay) || v.hoursDay <= 0 || v.hoursDay > 24) return "每天工作小时须在 0～24 之间。";
+    if (v.commute < 0 || v.commute > 12) return "通勤时间须在 0～12 小时之间。";
+    if (v.hoursDay + v.commute > 24) return "工时加通勤超过 24 小时，不现实，请检查。";
+    return "";
+  }
+
+  function applyMood(mood) {
+    var el = $("chibi");
+    for (var i = 0; i < MOODS.length; i++) el.classList.remove(MOODS[i].key);
+    el.classList.add(mood.key);
+  }
+
+  function poke() {
+    var el = $("chibi");
+    el.classList.remove("hop");
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { el.classList.add("hop"); });
+    });
+    el.classList.add("blink");
+    if (pokeTimer) clearTimeout(pokeTimer);
+    pokeTimer = setTimeout(function () { el.classList.remove("blink"); }, 140);
+  }
+
+  function calcAll() {
+    var v = readInputs();
+    var msg = validate(v);
+    var box = $("hourlyResult");
+    if (msg) {
+      if ($("monthly").value.trim() === "") {
+        box.innerHTML = '<span class="note">输入月薪，马上看到你的真实时薪。</span>';
+      } else {
+        box.innerHTML = '<span class="warn">' + msg + "</span>";
+      }
+      return;
+    }
+    var monthDays = v.daysWeek * 4.33;
+    var nominal = v.monthly / (monthDays * v.hoursDay);
+    var real = v.monthly / (monthDays * (v.hoursDay + v.commute));
+    var weekHours = v.daysWeek * (v.hoursDay + v.commute);
+    var mood = moodOf(weekHours);
+    state.real = real; state.nominal = nominal; state.weekHours = weekHours; state.mood = mood;
+    var label = state.workType === "custom" ? "自定义工作制" : PRESETS[state.workType].label;
+    var html = "";
+    html += "<p>名义时薪（只算工时）：<span class='big'>" + fmt(nominal) + "</span> 元/小时</p>";
+    html += "<p>真实时薪（含通勤）：<span class='big'>" + fmt(real) + "</span> 元/小时</p>";
+    html += "<p class='note'>" + label + " · 每周为工作投入约 " + fmt(weekHours, 1) + " 小时，一年约 " + fmt(weekHours * 52, 0) + " 小时。</p>";
+    html += "<p><span class='mood-tag mood-" + mood.key + "'>班味等级：" + mood.title + "</span></p>";
+    box.innerHTML = html;
+    applyMood(mood);
+    poke();
+    calcPrice();
+    saveState();
+  }
+
+  function calcPrice() {
+    var box = $("priceResult");
+    var bubble = $("bubble");
+    var raw = $("price").value.trim();
+    if (state.real === null) {
+      box.innerHTML = '<span class="note">先填好月收入，这里实时显示「= X 小时生命」。</span>';
+      bubble.textContent = "先填个月薪，我才能帮你算命…";
+      state.priceHours = null; state.priceVal = null;
+      return;
+    }
+    if (raw === "") {
+      box.innerHTML = '<span class="note">输入价格试试，比如 38。</span>';
+      bubble.textContent = "随便输个价格，我帮你算命。";
+      state.priceHours = null; state.priceVal = null;
+      return;
+    }
+    var price = num(raw);
+    if (!isFinite(price) || price <= 0) {
+      box.innerHTML = '<span class="warn">请输入大于 0 的价格。</span>';
+      bubble.textContent = "这价格不对劲吧。";
+      state.priceHours = null; state.priceVal = null;
+      return;
+    }
+    if (price > 10000000) {
+      box.innerHTML = '<span class="warn">价格大到不现实（上限 1000 万），请检查。</span>';
+      bubble.textContent = "这是要买楼？";
+      state.priceHours = null; state.priceVal = null;
+      return;
+    }
+    var hours = price / state.real;
+    state.priceHours = hours; state.priceVal = price;
+    box.innerHTML = "<p>" + fmt(price) + " 元 = <span class='big'>" + fmt(hours, 1) + "</span> 小时生命</p>";
+    var tier;
+    if (hours <= 1) tier = "白赚的，冲！这杯请自己～";
+    else if (hours <= 8) tier = "一顿饭的命，还能接受。";
+    else if (hours <= 40) tier = "肉疼…先放购物车冷静一下。";
+    else tier = "这是拿命换的啊…三思！";
+    bubble.textContent = tier;
+    poke();
+  }
+
+  function setWorkType(t) {
+    if (!PRESETS[t]) t = "normal";
+    state.workType = t;
+    var chips = document.querySelectorAll(".chip");
+    for (var i = 0; i < chips.length; i++) {
+      if (chips[i].getAttribute("data-type") === t) chips[i].classList.add("active");
+      else chips[i].classList.remove("active");
+    }
+    $("customRow").style.display = t === "custom" ? "flex" : "none";
+    if (t !== "custom") {
+      var p = PRESETS[t];
+      $("daysWeek").value = p.daysWeek;
+      $("hoursDay").value = p.hoursDay;
+      $("commute").value = p.commute;
+    }
+    calcAll();
+  }
+
+  function drawAvatar(ctx, cx, cy, mood) {
+    var k = MOODS.indexOf(mood);
+    ctx.fillStyle = "#5a6ca8";
+    ctx.beginPath();
+    ctx.moveTo(cx - 22, cy + 46);
+    ctx.quadraticCurveTo(cx, cy + 56, cx + 22, cy + 46);
+    ctx.lineTo(cx + 26, cy + 82);
+    ctx.quadraticCurveTo(cx, cy + 92, cx - 26, cy + 82);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#4a5a8a"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy + 50); ctx.lineTo(cx - 5, cy + 62);
+    ctx.moveTo(cx + 10, cy + 50); ctx.lineTo(cx + 5, cy + 62);
+    ctx.stroke();
+    ctx.fillStyle = "#e6eaf5"; ctx.strokeStyle = "#4a5a8a"; ctx.lineWidth = 1.5;
+    ctx.fillRect(cx - 11, cy + 62, 22, 14);
+    ctx.strokeRect(cx - 11, cy + 62, 22, 14);
+    ctx.fillStyle = "#41465a"; ctx.fillRect(cx + 26, cy + 52, 34, 22);
+    ctx.fillStyle = "#8a93ad"; ctx.fillRect(cx + 22, cy + 74, 42, 5);
+    ctx.fillStyle = "#3d3a45";
+    ctx.beginPath(); ctx.arc(cx, cy + 2, 34, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = (k === 3) ? "#d8d2cc" : "#ffe3d0";
+    ctx.beginPath(); ctx.arc(cx, cy + 8, 28, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#3d3a45";
+    ctx.beginPath(); ctx.arc(cx, cy + 6, 28, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#3d3a45"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath();
+    if (k === 3) {
+      ctx.moveTo(cx, cy - 24); ctx.quadraticCurveTo(cx - 2, cy - 14, cx - 12, cy - 12);
+    } else {
+      ctx.moveTo(cx, cy - 26); ctx.quadraticCurveTo(cx - 8, cy - 36, cx - 16, cy - 32);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "#333";
+    ctx.beginPath(); ctx.ellipse(cx - 11, cy + 6, 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 11, cy + 6, 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    if (k >= 1) {
+      ctx.fillStyle = "rgba(122,90,106," + (k === 1 ? 0.45 : k === 2 ? 0.85 : 1) + ")";
+      ctx.beginPath(); ctx.ellipse(cx - 11, cy + 13, 6, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + 11, cy + 13, 6, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = "#a0522d"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (k >= 2) {
+      ctx.moveTo(cx - 5, cy + 20); ctx.lineTo(cx + 5, cy + 20);
+    } else {
+      ctx.moveTo(cx - 6, cy + 19); ctx.quadraticCurveTo(cx, cy + 24, cx + 6, cy + 19);
+    }
+    ctx.stroke();
+  }
+
+  function drawBill() {
+    if (state.real === null) return;
+    var c = $("billCanvas");
+    var ctx = c.getContext("2d");
+    var mood = state.mood;
+    var F = "'Microsoft YaHei','PingFang SC',sans-serif";
+    ctx.fillStyle = "#f3f5fb"; ctx.fillRect(0, 0, 640, 440);
+    ctx.strokeStyle = "#5a6ca8"; ctx.lineWidth = 3; ctx.strokeRect(8, 8, 624, 424);
+    ctx.fillStyle = "#34447e"; ctx.font = "bold 30px " + F;
+    ctx.fillText("生命账单", 40, 66);
+    ctx.fillStyle = "#555f7a"; ctx.font = "13px " + F;
+    ctx.fillText("时薪换算器 v0.2.1", 480, 66);
+    ctx.fillStyle = "#262a33"; ctx.font = "16px " + F;
+    ctx.fillText("真实时薪（含通勤）", 40, 116);
+    ctx.fillStyle = "#34447e"; ctx.font = "bold 46px " + F;
+    ctx.fillText(fmt(state.real, 1) + " 元 / 小时", 40, 170);
+    ctx.strokeStyle = "#9aa5c4"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(40, 198); ctx.lineTo(600, 198); ctx.stroke();
+    ctx.fillStyle = "#262a33"; ctx.font = "17px " + F;
+    var label = state.workType === "custom" ? "自定义工作制" : PRESETS[state.workType].label;
+    ctx.fillText("工作制：" + label + "，每周投入约 " + fmt(state.weekHours, 1) + " 小时", 40, 234);
+    ctx.fillText("班味等级：" + mood.title, 40, 264);
+    if (state.priceHours !== null) {
+      ctx.fillText("本次换算：" + fmt(state.priceVal) + " 元 = " + fmt(state.priceHours, 1) + " 小时生命", 40, 294);
+    } else {
+      ctx.fillStyle = "#555f7a";
+      ctx.fillText("本次换算：还没输入价格", 40, 294);
+    }
+    ctx.fillStyle = "#a0522d"; ctx.font = "bold 22px " + F;
+    ctx.fillText("「" + mood.title + " · 时薪 " + fmt(state.real, 1) + " 元」", 40, 348);
+    ctx.fillStyle = "#555f7a"; ctx.font = "13px " + F;
+    ctx.fillText("数据仅存本地", 40, 398);
+    drawAvatar(ctx, 510, 220, mood);
+    var a = document.createElement("a");
+    a.href = c.toDataURL("image/png");
+    a.download = "生命账单.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        monthly: $("monthly").value,
+        workType: state.workType,
+        daysWeek: $("daysWeek").value,
+        hoursDay: $("hoursDay").value,
+        commute: $("commute").value,
+        price: $("price").value
+      }));
+    } catch (err) { /* 忽略 */ }
+  }
+
+  function restoreState() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+      if (!s) return;
+      if (s.monthly !== undefined) $("monthly").value = s.monthly;
+      if (s.price !== undefined) $("price").value = s.price;
+      if (PRESETS[s.workType]) state.workType = s.workType;
+      if (state.workType === "custom") {
+        if (s.daysWeek !== undefined) $("daysWeek").value = s.daysWeek;
+        if (s.hoursDay !== undefined) $("hoursDay").value = s.hoursDay;
+        if (s.commute !== undefined) $("commute").value = s.commute;
+      }
+    } catch (err) { /* 忽略 */ }
+  }
+
+  function init() {
+    restoreState();
+    setWorkType(state.workType);
+    var ids = ["monthly", "price", "daysWeek", "hoursDay", "commute"];
+    for (var i = 0; i < ids.length; i++) {
+      $(ids[i]).addEventListener("input", calcAll);
+      $(ids[i]).addEventListener("keydown", function (e) { if (e.key === "Enter") calcAll(); });
+    }
+    var chips = document.querySelectorAll(".chip");
+    for (var j = 0; j < chips.length; j++) {
+      chips[j].addEventListener("click", function () { setWorkType(this.getAttribute("data-type")); });
+    }
+    $("recalcBtn").addEventListener("click", calcAll);
+    $("billBtn").addEventListener("click", drawBill);
+    var gc = $("goodChips");
+    for (var g = 0; g < GOODS.length; g++) {
+      (function (item) {
+        var b = document.createElement("button");
+        b.className = "chip";
+        b.textContent = item.name + " " + item.price;
+        b.addEventListener("click", function () {
+          $("price").value = String(item.price);
+          calcAll();
+        });
+        gc.appendChild(b);
+      })(GOODS[g]);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
